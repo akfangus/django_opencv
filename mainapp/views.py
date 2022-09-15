@@ -2,13 +2,23 @@ import threading
 
 import cv2
 from django.contrib.auth.models import User
+from django.http import StreamingHttpResponse
 from django.shortcuts import render
 
-
 # Create your views here.
+from django.views.decorators import gzip
 
-def mainapp(request):
+
+@gzip.gzip_page
+def Home(request):
+    try:
+        cam = VideoCamera()
+        return StreamingHttpResponse(gen(cam), content_type="multipart/x-mixed-replace;boundary=frame")
+    except:
+        pass
+
     return render(request, 'mainapp/main.html')
+
 
 # 웹캠 클래스 생성
 class VideoCamera(object):
@@ -38,3 +48,9 @@ class VideoCamera(object):
             # 루프를 돌려서 지속적으로 frame 값을 업데이트 한다고함.
             (self.grabbed, self.frame) = self.video.read()
 
+
+def gen(camera):
+    while True:
+        frame = camera.get_frame()
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
